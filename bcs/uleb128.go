@@ -2,11 +2,17 @@ package bcs
 
 import "fmt"
 
-// ULEB128Encode converts an unsigned integer into []byte (see [wikipedia] and [bcs])
+// ULEB128SupportedTypes is a contraint interface that limits the input to
+// [ULEB128Encode] and [ULEB128Decode] to signed and unsigned integers except int8.
+type ULEB128SupportedTypes interface {
+	~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uint | ~int16 | ~int32 | ~int64 | ~int
+}
+
+// ULEB128Encode converts an integer into []byte (see [wikipedia] and [bcs])
 //
 // [wikipedia]: https://en.wikipedia.org/wiki/LEB128
 // [bcs]: https://github.com/diem/bcs#uleb128-encoded-integers
-func ULEB128Encode[T uint8 | uint16 | uint32 | uint64 | uint](input T) []byte {
+func ULEB128Encode[T ULEB128SupportedTypes](input T) []byte {
 	var result []byte
 
 	for {
@@ -24,9 +30,9 @@ func ULEB128Encode[T uint8 | uint16 | uint32 | uint64 | uint](input T) []byte {
 	return result
 }
 
-// ULEB128Decode decodes byte array into an unsigned integer, returns the decoded value, the number of bytes consumed, and a possible error.
+// ULEB128Decode decodes byte array into an integer, returns the decoded value, the number of bytes consumed, and a possible error.
 // If error is returned, the number of bytes returned is guaranteed to be 0.
-func ULEB128Decode[T uint8 | uint16 | uint32 | uint64 | uint](data []byte) (T, int, error) {
+func ULEB128Decode[T ULEB128SupportedTypes](data []byte) (T, int, error) {
 	var v, shift T
 	for i := 0; i < len(data); i++ {
 		d := T(data[i])
