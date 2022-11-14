@@ -3,8 +3,6 @@ package bcs_test
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-
 	"github.com/fardream/go-bcs/bcs"
 )
 
@@ -13,7 +11,7 @@ type ULEB128Test struct {
 	Expected []byte
 }
 
-var tests = []ULEB128Test{
+var uleb128Tests = []ULEB128Test{
 	{0, []byte{0}},
 	{1, []byte{1}},
 	{128, []byte{0x80, 1}},
@@ -24,16 +22,16 @@ var tests = []ULEB128Test{
 }
 
 func TestULEB128Encode(t *testing.T) {
-	for _, aCase := range tests {
+	for _, aCase := range uleb128Tests {
 		r := bcs.ULEB128Encode(aCase.Input)
-		if !cmp.Equal(r, aCase.Expected) {
+		if !sliceEqual(r, aCase.Expected) {
 			t.Errorf("encoding %d to %v, expecting: %v", aCase.Input, r, aCase.Expected)
 		}
 	}
 }
 
 func TestULEB128Decode(t *testing.T) {
-	for _, aCase := range tests {
+	for _, aCase := range uleb128Tests {
 		r, n, e := bcs.ULEB128Decode[uint32](aCase.Expected)
 		if e != nil {
 			t.Fatalf("failed to decode: %v", e)
@@ -46,7 +44,7 @@ func TestULEB128Decode(t *testing.T) {
 		}
 	}
 
-	for _, aCase := range tests[3:] {
+	for _, aCase := range uleb128Tests[3:] {
 		r, n, e := bcs.ULEB128Decode[uint8](aCase.Expected)
 		if e == nil {
 			t.Fatalf("should overflow: %d %d", r, n)
