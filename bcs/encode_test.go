@@ -47,3 +47,48 @@ func TestMarshal_basicTypes(t *testing.T) {
 		}
 	}
 }
+
+type MyStruct struct {
+	Boolean bool
+	Bytes   []byte
+	Label   string
+}
+
+type Wrapper struct {
+	Inner  MyStruct
+	String string
+}
+
+// struct from [bcs repo]
+//
+// [bcs repo]: https://github.com/diem/bcs
+func TestMarshal_struct(t *testing.T) {
+	s := &MyStruct{
+		Boolean: true,
+		Bytes:   []byte{0xC0, 0xDE},
+		Label:   "a",
+	}
+
+	sBytes, err := bcs.Marshal(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sBytesExpected := []byte{1, 2, 0xC0, 0xDE, 1, 98}
+	if !sliceEqual(sBytes, sBytesExpected) {
+		t.Fatalf("want: %v\ngot:  %v\n", sBytesExpected, sBytes)
+	}
+
+	w := Wrapper{
+		Inner:  *s,
+		String: "b",
+	}
+
+	wBytes, err := bcs.Marshal(w)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wBytesExpected := append(sBytesExpected, 1, 99)
+	if !sliceEqual(wBytes, wBytesExpected) {
+		t.Fatalf("want: %v\ngot:  %v\n", wBytesExpected, wBytes)
+	}
+}
