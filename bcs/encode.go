@@ -21,13 +21,15 @@ func NewEncoder(w io.Writer) *Encoder {
 }
 
 // Encode a value v into the encoder.
+//
+//   - If the value is [Marshaler], then the corresponding
+//     MarshalBCS implementation will be called.
+//   - If the value is [Enum], then it will be special handled for enum.
 func (e *Encoder) Encode(v any) error {
 	return e.encode(reflect.ValueOf(v))
 }
 
-// encode a value with the tagValue.
-// tagValue can be optional or ignore, and tagValue should not be passed onto
-// sub encodings.
+// encode a value
 func (e *Encoder) encode(v reflect.Value) error {
 	kind := v.Kind()
 
@@ -73,6 +75,7 @@ func (e *Encoder) encode(v reflect.Value) error {
 	}
 }
 
+// encodeEnum encodes an [Enum]
 func (e *Encoder) encodeEnum(v reflect.Value) error {
 	t := v.Type()
 
@@ -195,6 +198,11 @@ func (e *Encoder) encodeStruct(v reflect.Value) error {
 //
 // Pointers are serialized as the type they point to. Nil pointers will be serialized
 // as zero value of the type they point to unless it's marked as `optional`.
+//
+// During marshalling process, how v is marshalled depends on if v implemented [Marshaler] or [Enum]
+//  1. First priority is [Marshaler]
+//  2. Then, check if value v is [Enum]
+//  3. Then, run the standard process.
 func Marshal(v any) ([]byte, error) {
 	var b bytes.Buffer
 	e := NewEncoder(&b)
@@ -204,4 +212,14 @@ func Marshal(v any) ([]byte, error) {
 	}
 
 	return b.Bytes(), nil
+}
+
+// MustMarshal [Marshal] v, [panic] if error.
+func MustMarshal(v any) []byte {
+	result, err := Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+
+	return result
 }

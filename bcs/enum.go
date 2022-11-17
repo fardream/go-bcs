@@ -12,8 +12,10 @@ package bcs
 //	  V1 *uint16 `bcs:"-"` // ignored, so variant 1 is invalid
 //	  V2 int `bcs:"-"` // cannot be set to nil, so variant 2 is invalid
 //	  V3 *uint8 // variant 3
-//	  v4 uint32 // ignored
+//	  v4 uint32 // Unexported, so ignored.
 //	}
+//	// IsBcsEnum doesn't do anything besides indicating this is an Enum for BCS.
+//	func (a AEnum) IsBcsEnum() {}
 //
 // If there are mulitple non-nil fields when marshalling, the first one encountered will be serialized.
 //
