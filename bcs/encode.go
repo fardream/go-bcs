@@ -31,12 +31,15 @@ func (e *Encoder) Encode(v any) error {
 
 // encode a value
 func (e *Encoder) encode(v reflect.Value) error {
-	kind := v.Kind()
-
+	// if v not CanInterface,
+	// this value is an unexported value, skip it.
 	if !v.CanInterface() {
 		return nil
 	}
 
+	// test for the two enums we defined.
+	// 1. Marshaler
+	// 2. Enum.
 	i := v.Interface()
 	if m, ismarshaler := i.(Marshaler); ismarshaler {
 		bytes, err := m.MarshalBCS()
@@ -52,12 +55,19 @@ func (e *Encoder) encode(v reflect.Value) error {
 		return e.encodeEnum(reflect.Indirect(v))
 	}
 
+	kind := v.Kind()
+
 	switch kind {
 	case reflect.Bool, // boolean
 		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, // all the ints
 		reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64: // all the uints
+		// use little endian to encode those.
 		return binary.Write(e.w, binary.LittleEndian, v.Interface())
 	case reflect.Ptr:
+		// if v is nil pointer, use the zero value for v.
+		// we don't check for optional flag here.
+		// that should be checked when the container struct is encoded,
+		// if this pointer is contained in a struct.
 		if v.IsNil() {
 			return e.encode(reflect.Indirect(reflect.New(v.Type())))
 		} else {
@@ -114,6 +124,7 @@ func (e *Encoder) encodeEnum(v reflect.Value) error {
 	return fmt.Errorf("no field is set in the enum")
 }
 
+// encodeByteSlice is specialized since bytes those can be simply put into the output.
 func (e *Encoder) encodeByteSlice(b []byte) error {
 	l := len(b)
 	if _, err := e.w.Write(ULEB128Encode(l)); err != nil {
@@ -200,9 +211,9 @@ func (e *Encoder) encodeStruct(v reflect.Value) error {
 // as zero value of the type they point to unless it's marked as `optional`.
 //
 // During marshalling process, how v is marshalled depends on if v implemented [Marshaler] or [Enum]
-//  1. First priority is [Marshaler]
-//  2. Then, check if value v is [Enum]
-//  3. Then, run the standard process.
+//  1. if [Marshaler], use "MarshalBCS" method of the class.
+//  2. if not [Marshaler] but [Enum], use specialization for [Enum]
+//  3. otherwise standard process.
 func Marshal(v any) ([]byte, error) {
 	var b bytes.Buffer
 	e := NewEncoder(&b)
@@ -214,7 +225,7 @@ func Marshal(v any) ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-// MustMarshal [Marshal] v, [panic] if error.
+// MustMarshal [Marshal] v, and panics if error.
 func MustMarshal(v any) []byte {
 	result, err := Marshal(v)
 	if err != nil {
