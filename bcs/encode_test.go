@@ -59,6 +59,16 @@ type Wrapper struct {
 	String string
 }
 
+type WrapperWithWrongOptional struct {
+	Inner MyStruct
+	Outer string `bcs:"optional"`
+}
+
+type WrapperWithOptional struct {
+	Inner MyStruct
+	Outer *string `bcs:"optional"`
+}
+
 // struct from [bcs repo]
 //
 // [bcs repo]: https://github.com/diem/bcs
@@ -90,5 +100,40 @@ func TestMarshal_struct(t *testing.T) {
 	wBytesExpected := append(sBytesExpected, 1, 99)
 	if !sliceEqual(wBytes, wBytesExpected) {
 		t.Fatalf("want: %v\ngot:  %v\n", wBytesExpected, wBytes)
+	}
+}
+
+func TestMarshal_optional(t *testing.T) {
+	if _, err := bcs.Marshal(WrapperWithWrongOptional{}); err == nil {
+		t.Fatalf("optional should be pointer or interface")
+	} else {
+		t.Log(err.Error())
+	}
+	optionalUnset := WrapperWithOptional{
+		Inner: MyStruct{
+			Boolean: true,
+			Bytes:   []byte{0xC0, 0xDE},
+			Label:   "a",
+		},
+	}
+	optionalUnsetBytes, err := bcs.Marshal(optionalUnset)
+	if err != nil {
+		t.Error(err)
+	}
+	optionalUnsetExpected := []byte{1, 2, 0xC0, 0xDE, 1, 98, 0}
+	if !sliceEqual(optionalUnsetBytes, optionalUnsetExpected) {
+		t.Errorf("want: %v\ngot:  %v\n", optionalUnsetExpected, optionalUnsetBytes)
+	}
+
+	optionalSet := optionalUnset
+	s := "123"
+	optionalSet.Outer = &s
+	optionalSetBytes, err := bcs.Marshal(optionalSet)
+	if err != nil {
+		t.Error(err)
+	}
+	optionalSetExpected := []byte{1, 2, 0xC0, 0xDE, 1, 98, 1, 3, 49, 50, 51}
+	if !sliceEqual(optionalSetBytes, optionalSetExpected) {
+		t.Errorf("want: %v\ngot:  %v\n", optionalSetExpected, optionalSetBytes)
 	}
 }

@@ -1,6 +1,7 @@
 package bcs_test
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/fardream/go-bcs/bcs"
@@ -32,7 +33,7 @@ func TestULEB128Encode(t *testing.T) {
 
 func TestULEB128Decode(t *testing.T) {
 	for _, aCase := range uleb128Tests {
-		r, n, e := bcs.ULEB128Decode[uint32](aCase.Expected)
+		r, n, e := bcs.ULEB128Decode[uint32](bytes.NewReader(aCase.Expected))
 		if e != nil {
 			t.Fatalf("failed to decode: %v", e)
 		}
@@ -45,7 +46,7 @@ func TestULEB128Decode(t *testing.T) {
 	}
 
 	for _, aCase := range uleb128Tests[3:] {
-		r, n, e := bcs.ULEB128Decode[uint8](aCase.Expected)
+		r, n, e := bcs.ULEB128Decode[uint8](bytes.NewReader(aCase.Expected))
 		if e == nil {
 			t.Fatalf("should overflow: %d %d", r, n)
 		} else {

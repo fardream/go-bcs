@@ -22,9 +22,9 @@ func NewEncoder(w io.Writer) *Encoder {
 
 // Encode a value v into the encoder.
 //
-//   - If the value is [Marshaler], then the corresponding
+//   - If the value is [Marshaler], the corresponding
 //     MarshalBCS implementation will be called.
-//   - If the value is [Enum], then it will be special handled for enum.
+//   - If the value is [Enum], it will be special handled for [Enum].
 func (e *Encoder) Encode(v any) error {
 	return e.encode(reflect.ValueOf(v))
 }
@@ -37,7 +37,7 @@ func (e *Encoder) encode(v reflect.Value) error {
 		return nil
 	}
 
-	// test for the two enums we defined.
+	// test for the two interfaces we defined.
 	// 1. Marshaler
 	// 2. Enum.
 	i := v.Interface()
@@ -63,25 +63,39 @@ func (e *Encoder) encode(v reflect.Value) error {
 		reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64: // all the uints
 		// use little endian to encode those.
 		return binary.Write(e.w, binary.LittleEndian, v.Interface())
-	case reflect.Ptr:
+
+	case reflect.Pointer: // pointer
 		// if v is nil pointer, use the zero value for v.
 		// we don't check for optional flag here.
-		// that should be checked when the container struct is encoded,
+		// that should be checked when the container struct is encoded
 		// if this pointer is contained in a struct.
-		if v.IsNil() {
-			return e.encode(reflect.Indirect(reflect.New(v.Type())))
-		} else {
-			return e.encode(reflect.Indirect(v))
+		return e.encode(reflect.Indirect(v))
+
+	case reflect.Interface:
+		return e.encode(v.Elem())
+
+	case reflect.Slice: // slices
+		// check if the element is uint8 or byteslice
+		if byteSlice, ok := (v.Interface()).([]byte); ok {
+			return e.encodeByteSlice(byteSlice)
 		}
-	case reflect.Slice:
 		return e.encodeSlice(v)
+
+	case reflect.Array: // encode array
+		return e.encodeArray(v)
+
 	case reflect.String:
 		str := []byte(v.String())
 		return e.encodeByteSlice(str)
+
 	case reflect.Struct:
 		return e.encodeStruct(v)
+
+	case reflect.Chan, reflect.Func, reflect.Uintptr, reflect.UnsafePointer: // channel, func, pointers
+		return nil
+
 	default:
-		return fmt.Errorf("unsupported kind: %s", kind.String())
+		return fmt.Errorf("unsupported kind: %s, consider make the field ignored by using - tag or provide a customized Marshaler implementation.", kind.String())
 	}
 }
 
@@ -138,6 +152,17 @@ func (e *Encoder) encodeByteSlice(b []byte) error {
 	return nil
 }
 
+func (e *Encoder) encodeArray(v reflect.Value) error {
+	length := v.Len()
+	for i := 0; i < length; i++ {
+		if err := e.encode(v.Index(i)); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (e *Encoder) encodeSlice(v reflect.Value) error {
 	length := v.Len()
 	if _, err := e.w.Write(ULEB128Encode(length)); err != nil {
@@ -158,6 +183,7 @@ func (e *Encoder) encodeStruct(v reflect.Value) error {
 
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Field(i)
+		// if a field is not exported, ignore
 		if !field.CanInterface() {
 			continue
 		}
@@ -165,12 +191,14 @@ func (e *Encoder) encodeStruct(v reflect.Value) error {
 		if err != nil {
 			return err
 		}
+		// ignored
 		if tag&tagValue_Ignore != 0 {
 			continue
 		}
 
+		// optional
 		if tag&tagValue_Optional != 0 {
-			if v.Kind() != reflect.Pointer && v.Kind() != reflect.Interface {
+			if field.Kind() != reflect.Pointer && field.Kind() != reflect.Interface {
 				return fmt.Errorf("optional field can only be pointer or interface")
 			}
 			if field.IsNil() {
@@ -182,11 +210,14 @@ func (e *Encoder) encodeStruct(v reflect.Value) error {
 				if _, err := e.w.Write([]byte{1}); err != nil {
 					return err
 				}
-				if err := e.encode(reflect.Indirect(field)); err != nil {
+				if err := e.encode(field.Elem()); err != nil {
 					return err
 				}
 			}
-		} else if err := e.encode(field); err != nil {
+			continue
+		}
+		// finally
+		if err := e.encode(field); err != nil {
 			return err
 		}
 	}
@@ -204,15 +235,23 @@ func (e *Encoder) encodeStruct(v reflect.Value) error {
 //   - Use tag `-` to ignore fields.
 //   - Unexported fields are ignored.
 //
-// Note that bcs doesn't have schema, and field names are irrelavant. The fields
+// Note that bcs doesn't have schema, and field names are irrelevant. The fields
 // of struct are serialized in the order that they are defined.
 //
 // Pointers are serialized as the type they point to. Nil pointers will be serialized
 // as zero value of the type they point to unless it's marked as `optional`.
 //
+// Arrays are serialized as fixed length vector (or serialize the each object individually without prefixing
+// the length of the array).
+//
+// Vanilla maps are not supported, however, the code will error if map is encountered to call out they are
+// not supported and either ignore or provide a customized marshal function.
+//
+// Channels, functions are silently ignored.
+//
 // During marshalling process, how v is marshalled depends on if v implemented [Marshaler] or [Enum]
-//  1. if [Marshaler], use "MarshalBCS" method of the class.
-//  2. if not [Marshaler] but [Enum], use specialization for [Enum]
+//  1. if [Marshaler], use "MarshalBCS" method.
+//  2. if not [Marshaler] but [Enum], use specialization for [Enum].
 //  3. otherwise standard process.
 func Marshal(v any) ([]byte, error) {
 	var b bytes.Buffer
