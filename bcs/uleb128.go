@@ -35,7 +35,7 @@ func ULEB128Encode[T ULEB128SupportedTypes](input T) []byte {
 //   - it accepts only [io.ByteReader], but the recommended way of creating one from [bufio.NewReader] will read more than 1 byte at the
 //     to fill the buffer.
 func ULEB128Decode[T ULEB128SupportedTypes](r io.Reader) (T, int, error) {
-	buf := make([]byte, 1, 1)
+	buf := make([]byte, 1)
 	var v, shift T
 	var n int
 	for n < 10 {

@@ -119,6 +119,10 @@ func (d *Decoder) decodeVanilla(v reflect.Value) error {
 		return d.decodeStruct(v)
 
 	case reflect.Slice:
+		if v.Elem().Kind() == reflect.Uint8 {
+			return d.decodeByteSlice(v)
+		}
+
 		return d.decodeSlice(v)
 
 	case reflect.Array:
@@ -138,7 +142,7 @@ func (d *Decoder) decodeString(v reflect.Value) error {
 		return err
 	}
 
-	tmp := make([]byte, size, size)
+	tmp := make([]byte, size)
 
 	read, err := d.r.Read(tmp)
 	if err != nil {
@@ -155,7 +159,7 @@ func (d *Decoder) decodeString(v reflect.Value) error {
 }
 
 func (d *Decoder) readByte() (byte, error) {
-	b := make([]byte, 1, 1)
+	b := make([]byte, 1)
 	n, err := d.r.Read(b)
 	if err != nil {
 		return 0, err
@@ -228,7 +232,7 @@ func (d *Decoder) decodeByteSlice(v reflect.Value) error {
 		return err
 	}
 
-	tmp := make([]byte, size, size)
+	tmp := make([]byte, size)
 
 	read, err := d.r.Read(tmp)
 	if err != nil {

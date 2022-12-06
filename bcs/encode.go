@@ -95,7 +95,7 @@ func (e *Encoder) encode(v reflect.Value) error {
 		return nil
 
 	default:
-		return fmt.Errorf("unsupported kind: %s, consider make the field ignored by using - tag or provide a customized Marshaler implementation.", kind.String())
+		return fmt.Errorf("unsupported kind: %s, consider make the field ignored by using - tag or provide a customized Marshaler implementation", kind.String())
 	}
 }
 
