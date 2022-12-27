@@ -5,9 +5,7 @@ import (
 	"strings"
 )
 
-const (
-	tagName = "bcs"
-)
+const tagName = "bcs"
 
 const (
 	tagValue_Optional int64 = 1 << iota // optional
