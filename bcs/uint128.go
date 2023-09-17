@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math/big"
 )
 
@@ -17,6 +18,7 @@ var (
 	_ json.Marshaler   = (*Uint128)(nil)
 	_ json.Unmarshaler = (*Uint128)(nil)
 	_ Marshaler        = (*Uint128)(nil)
+	_ Unmarshaler      = (*Uint128)(nil)
 )
 
 func (i Uint128) Big() *big.Int {
@@ -118,6 +120,22 @@ func (i Uint128) MarshalBCS() ([]byte, error) {
 	binary.LittleEndian.PutUint64(r[8:], i.hi)
 
 	return r, nil
+}
+
+func (i *Uint128) UnmarshalBCS(r io.Reader) (int, error) {
+	buf := make([]byte, 16)
+	n, err := r.Read(buf)
+	if err != nil {
+		return n, err
+	}
+	if n != 16 {
+		return n, fmt.Errorf("failed to read 16 bytes for Uint128 (read %d bytes)", n)
+	}
+
+	i.lo = binary.LittleEndian.Uint64(buf[0:8])
+	i.hi = binary.LittleEndian.Uint64(buf[8:16])
+
+	return n, nil
 }
 
 func (i *Uint128) Cmp(j *Uint128) int {
