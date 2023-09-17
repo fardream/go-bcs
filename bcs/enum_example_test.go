@@ -9,6 +9,7 @@ import (
 type AnotherStruct struct {
 	S string
 }
+
 type EnumExample struct {
 	V0 *uint8
 	V1 *uint16 `bcs:"-"`

@@ -27,14 +27,14 @@ func UnmarshalWithSize(data []byte, v any) (int, error) {
 
 // Decoder takes an [io.Reader] and decodes value from it.
 type Decoder struct {
-	r          io.Reader
+	reader     io.Reader
 	byteBuffer [1]byte
 }
 
 // NewDecoder creates a new [Decoder] from an [io.Reader]
 func NewDecoder(r io.Reader) *Decoder {
 	return &Decoder{
-		r: r,
+		reader: r,
 	}
 }
 
@@ -74,7 +74,7 @@ func (d *Decoder) decode(v reflect.Value) (int, error) {
 
 	// Unmarshaler
 	if i, isUnmarshaler := v.Interface().(Unmarshaler); isUnmarshaler {
-		return i.UnmarshalBCS(d.r)
+		return i.UnmarshalBCS(d.reader)
 	}
 
 	// Enum
@@ -135,13 +135,13 @@ func (d *Decoder) decodeVanilla(v reflect.Value) (int, error) {
 		return n, nil
 
 	case reflect.Int8, reflect.Uint8:
-		return 1, binary.Read(d.r, binary.LittleEndian, v.Addr().Interface())
+		return 1, binary.Read(d.reader, binary.LittleEndian, v.Addr().Interface())
 	case reflect.Int16, reflect.Uint16:
-		return 2, binary.Read(d.r, binary.LittleEndian, v.Addr().Interface())
+		return 2, binary.Read(d.reader, binary.LittleEndian, v.Addr().Interface())
 	case reflect.Int32, reflect.Uint32:
-		return 4, binary.Read(d.r, binary.LittleEndian, v.Addr().Interface())
+		return 4, binary.Read(d.reader, binary.LittleEndian, v.Addr().Interface())
 	case reflect.Int64, reflect.Uint64:
-		return 8, binary.Read(d.r, binary.LittleEndian, v.Addr().Interface())
+		return 8, binary.Read(d.reader, binary.LittleEndian, v.Addr().Interface())
 
 	case reflect.Struct:
 		return d.decodeStruct(v)
@@ -167,7 +167,7 @@ func (d *Decoder) decodeVanilla(v reflect.Value) (int, error) {
 
 // decodeString
 func (d *Decoder) decodeString(v reflect.Value) (int, error) {
-	size, n, err := ULEB128Decode[int](d.r)
+	size, n, err := ULEB128Decode[int](d.reader)
 	if err != nil {
 		return n, err
 	}
@@ -179,7 +179,7 @@ func (d *Decoder) decodeString(v reflect.Value) (int, error) {
 
 	tmp := make([]byte, size)
 
-	read, err := d.r.Read(tmp)
+	read, err := d.reader.Read(tmp)
 	n += read
 	if err != nil {
 		return n, err
@@ -197,7 +197,7 @@ func (d *Decoder) decodeString(v reflect.Value) (int, error) {
 // readByte reads one byte from the input, error if no byte is read.
 func (d *Decoder) readByte() (byte, int, error) {
 	b := d.byteBuffer[:]
-	n, err := d.r.Read(b)
+	n, err := d.reader.Read(b)
 	if err != nil {
 		return 0, n, err
 	}
@@ -212,21 +212,22 @@ func (d *Decoder) decodeStruct(v reflect.Value) (int, error) {
 	t := v.Type()
 
 	var n int
+
+fieldLoop:
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Field(i)
 		if !field.CanInterface() {
-			continue
+			continue fieldLoop
 		}
 		tag, err := parseTagValue(t.Field(i).Tag.Get(tagName))
 		if err != nil {
 			return n, err
 		}
-		// ignored
-		if tag&tagValue_Ignore != 0 {
-			continue
-		}
-		// optional
-		if tag&tagValue_Optional != 0 {
+
+		switch {
+		case tag.isIgnored(): // ignored
+			continue fieldLoop
+		case tag.isOptional(): // optional
 			isOptional, k, err := d.readByte()
 			n += k
 			if err != nil {
@@ -242,14 +243,12 @@ func (d *Decoder) decodeStruct(v reflect.Value) (int, error) {
 					return n, err
 				}
 			}
-
-			continue
-		}
-
-		k, err := d.decode(field)
-		n += k
-		if err != nil {
-			return n, err
+		default:
+			k, err := d.decode(field)
+			n += k
+			if err != nil {
+				return n, err
+			}
 		}
 	}
 
@@ -260,7 +259,7 @@ func (d *Decoder) decodeEnum(v reflect.Value) (int, error) {
 	if v.Kind() != reflect.Struct {
 		return 0, fmt.Errorf("only support struct for Enum, got %s", v.Kind().String())
 	}
-	enumId, n, err := ULEB128Decode[int](d.r)
+	enumId, n, err := ULEB128Decode[int](d.reader)
 	if err != nil {
 		return n, err
 	}
@@ -274,14 +273,14 @@ func (d *Decoder) decodeEnum(v reflect.Value) (int, error) {
 }
 
 func (d *Decoder) decodeByteSlice(v reflect.Value) (int, error) {
-	size, n, err := ULEB128Decode[int](d.r)
+	size, n, err := ULEB128Decode[int](d.reader)
 	if err != nil {
 		return n, err
 	}
 
 	tmp := make([]byte, size)
 
-	read, err := d.r.Read(tmp)
+	read, err := d.reader.Read(tmp)
 	n += read
 	if err != nil {
 		return n, err
@@ -329,7 +328,7 @@ func (d *Decoder) decodeArray(v reflect.Value) (int, error) {
 
 func (d *Decoder) decodeSlice(v reflect.Value) (int, error) {
 	// get the length of the slice.
-	size, n, err := ULEB128Decode[int](d.r)
+	size, n, err := ULEB128Decode[int](d.reader)
 	if err != nil {
 		return n, err
 	}
