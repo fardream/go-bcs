@@ -16,13 +16,8 @@ import (
 //  1. if [Unmarshaler], use "UnmarshalBCS" method.
 //  2. if not [Unmarshaler] but [Enum], use the specialization for [Enum].
 //  3. otherwise standard process.
-func Unmarshal(data []byte, v any) error {
+func Unmarshal(data []byte, v any) (int, error) {
 	return NewDecoder(bytes.NewReader(data)).Decode(v)
-}
-
-// UnmarshalWithSize unmarshals the bcs serialized ata into v, and returns the number of bytes consumed.
-func UnmarshalWithSize(data []byte, v any) (int, error) {
-	return NewDecoder(bytes.NewReader(data)).DecodeWithSize(v)
 }
 
 // Decoder takes an [io.Reader] and decodes value from it.
@@ -38,20 +33,11 @@ func NewDecoder(r io.Reader) *Decoder {
 	}
 }
 
-// Decode a value from the decoder.
-//
-//   - If the value is [Unmarshaler], the corresponding UnmarshalBCS will be called.
-//   - If the value is [Enum], it will be special handled for [Enum]
-func (d *Decoder) Decode(v any) error {
-	_, err := d.DecodeWithSize(v)
-	return err
-}
-
 // DecodeWithSize decodes a value from the decoder, and returns the number of bytes it consumed from the decoder.
 //
 //   - If the value is [Unmarshaler], the corresponding UnmarshalBCS will be called.
 //   - If the value is [Enum], it will be special handled for [Enum]
-func (d *Decoder) DecodeWithSize(v any) (int, error) {
+func (d *Decoder) Decode(v any) (int, error) {
 	reflectValue := reflect.ValueOf(v)
 	if reflectValue.Kind() != reflect.Pointer || reflectValue.IsNil() {
 		return 0, fmt.Errorf("not a pointer or nil pointer")

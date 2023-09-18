@@ -14,7 +14,7 @@ func runVanillaCaseTest[T bool | uint8 | int8 | int16 | uint16 | int32 | uint32 
 	}
 
 	nv := new(T)
-	n, err := bcs.UnmarshalWithSize(exp, nv)
+	n, err := bcs.Unmarshal(exp, nv)
 	if err != nil {
 		return err
 	}
@@ -35,7 +35,7 @@ func runVanillaSliceCaseTest[T bool | uint8 | int8 | int16 | uint16 | int32 | ui
 	}
 
 	nv := make([]T, 0)
-	n, err := bcs.UnmarshalWithSize(exp, &nv)
+	n, err := bcs.Unmarshal(exp, &nv)
 	if err != nil {
 		return err
 	}
@@ -57,7 +57,7 @@ func runVanillaSliceCaseTest[T bool | uint8 | int8 | int16 | uint16 | int32 | ui
 	return nil
 }
 
-func TestUnmarshalWithSize_BasicTypes(t *testing.T) {
+func TestUnmarshal_BasicTypes(t *testing.T) {
 	for _, aCase := range basicMarshalTests {
 		if err := runVanillaCaseTest[bool](aCase.input, aCase.expected); err != nil {
 			t.Fatal(err)
@@ -126,7 +126,7 @@ var unmarshalCases = []*UnmarshalCase{
 	},
 }
 
-func TestUnmarshalWithSize(t *testing.T) {
+func TestUnmarshal(t *testing.T) {
 	for _, v := range unmarshalCases {
 		m, err := bcs.Marshal(v.v)
 		if err != nil {
@@ -136,7 +136,7 @@ func TestUnmarshalWithSize(t *testing.T) {
 			t.Errorf("want: %v, got %v", v.expected, m)
 		}
 		nv := new(UnmarshalStruct)
-		n, err := bcs.UnmarshalWithSize(v.expected, nv)
+		n, err := bcs.Unmarshal(v.expected, nv)
 		if err != nil {
 			t.Error(err)
 		}

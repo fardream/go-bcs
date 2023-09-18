@@ -16,7 +16,7 @@ func TestEnum_Unmarshal(t *testing.T) {
 	for _, v := range cases {
 		e := &EnumExample{}
 
-		n, err := bcs.UnmarshalWithSize(v, e)
+		n, err := bcs.Unmarshal(v, e)
 		if err != nil {
 			t.Error(err)
 		}
