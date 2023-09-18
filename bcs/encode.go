@@ -116,7 +116,7 @@ func (e *Encoder) encodeEnum(v reflect.Value) error {
 		if err != nil {
 			return err
 		}
-		if tag&tagValue_Ignore > 0 {
+		if tag.isIgnored() {
 			continue
 		}
 		fieldKind := field.Kind()
@@ -191,13 +191,10 @@ func (e *Encoder) encodeStruct(v reflect.Value) error {
 		if err != nil {
 			return err
 		}
-		// ignored
-		if tag&tagValue_Ignore != 0 {
+		switch {
+		case tag.isIgnored():
 			continue
-		}
-
-		// optional
-		if tag&tagValue_Optional != 0 {
+		case tag.isOptional():
 			if field.Kind() != reflect.Pointer && field.Kind() != reflect.Interface {
 				return fmt.Errorf("optional field can only be pointer or interface")
 			}
@@ -215,10 +212,11 @@ func (e *Encoder) encodeStruct(v reflect.Value) error {
 				}
 			}
 			continue
-		}
-		// finally
-		if err := e.encode(field); err != nil {
-			return err
+		default:
+			// finally
+			if err := e.encode(field); err != nil {
+				return err
+			}
 		}
 	}
 
