@@ -264,6 +264,10 @@ func (d *Decoder) decodeByteSlice(v reflect.Value) (int, error) {
 		return n, err
 	}
 
+	if size == 0 {
+		return n, nil
+	}
+
 	tmp := make([]byte, size)
 
 	read, err := d.reader.Read(tmp)
