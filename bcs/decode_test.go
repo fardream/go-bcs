@@ -154,3 +154,18 @@ func TestUnmarshal(t *testing.T) {
 		}
 	}
 }
+
+func TestEmptyByteSlice(t *testing.T) {
+	encoded, err := bcs.Marshal([]byte{})
+	if err != nil {
+		t.Error(err)
+	}
+	decoded := new([]byte)
+	n, err := bcs.Unmarshal(encoded, decoded)
+	if err != nil {
+		t.Error(err)
+	}
+	if n != 1 {
+		t.Errorf("want parsed length 1")
+	}
+}
