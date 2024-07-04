@@ -162,8 +162,7 @@ func TestMarshal_option(t *testing.T) {
 	t.Run("none", func(t *testing.T) {
 		var p0, p1 bcs.Option[[]byte]
 		inputExpected := []byte{0}
-		var emptyStruct struct{}
-		p0.None = &emptyStruct
+		p0.None = true
 		b, err := bcs.Marshal(&p0)
 		if err != nil {
 			t.Error(err)
@@ -175,8 +174,8 @@ func TestMarshal_option(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		if p1.None == nil {
-			t.Errorf("None field should have value")
+		if !p1.None {
+			t.Errorf("None field should be true")
 		}
 	})
 }

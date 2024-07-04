@@ -264,11 +264,11 @@ func Marshal(v any) ([]byte, error) {
 
 type Option[T any] struct {
 	Some T
-	None *struct{}
+	None bool
 }
 
 func (p *Option[T]) MarshalBCS() ([]byte, error) {
-	if p.None != nil {
+	if p.None {
 		return []byte{0}, nil
 	}
 	b, err := Marshal(p.Some)
@@ -280,8 +280,7 @@ func (p *Option[T]) UnmarshalBCS(r io.Reader) (int, error) {
 	io.Copy(buf, r)
 	tmp := buf.Bytes()
 	if len(tmp) == 1 {
-		var emptyStruct struct{}
-		p.None = &emptyStruct
+		p.None = true
 		return 1, nil
 	}
 	b := tmp[1:]
