@@ -137,3 +137,46 @@ func TestMarshal_optional(t *testing.T) {
 		t.Errorf("want: %v\ngot:  %v\n", optionalSetExpected, optionalSetBytes)
 	}
 }
+
+func TestMarshal_option(t *testing.T) {
+	t.Run("some", func(t *testing.T) {
+		var p0, p1 bcs.Option[[]byte]
+		input := []byte{0xC0, 0xDE}
+		inputExpected := []byte{1, 2, 0xC0, 0xDE}
+		p0.Some = input
+		b, err := bcs.Marshal(&p0)
+		if err != nil {
+			t.Error(err)
+		}
+		if !sliceEqual(b, inputExpected) {
+			t.Errorf("want: %v\ngot:  %v\n", inputExpected, b)
+		}
+		_, err = bcs.Unmarshal(b, &p1)
+		if err != nil {
+			t.Error(err)
+		}
+		if !sliceEqual(input, p1.Some) {
+			t.Errorf("want: %v\ngot:  %v\n", input, p1.Some)
+		}
+	})
+	t.Run("none", func(t *testing.T) {
+		var p0, p1 bcs.Option[[]byte]
+		inputExpected := []byte{0}
+		var emptyStruct struct{}
+		p0.None = &emptyStruct
+		b, err := bcs.Marshal(&p0)
+		if err != nil {
+			t.Error(err)
+		}
+		if !sliceEqual(b, inputExpected) {
+			t.Errorf("want: %v\ngot:  %v\n", inputExpected, b)
+		}
+		_, err = bcs.Unmarshal(b, &p1)
+		if err != nil {
+			t.Error(err)
+		}
+		if p1.None == nil {
+			t.Errorf("None field should have value")
+		}
+	})
+}
