@@ -1,6 +1,7 @@
 package bcs_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/fardream/go-bcs/bcs"
@@ -30,7 +31,7 @@ func TestEnum_Unmarshal(t *testing.T) {
 			t.Error(err)
 		}
 
-		if !sliceEqual(nb, v) {
+		if !slices.Equal(nb, v) {
 			t.Errorf("want %v, got %v", v, nb)
 		}
 	}

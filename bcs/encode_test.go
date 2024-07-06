@@ -1,6 +1,7 @@
 package bcs_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/fardream/go-bcs/bcs"
@@ -42,7 +43,7 @@ func TestMarshal_basicTypes(t *testing.T) {
 		if err != nil {
 			t.Errorf("failed to marshal %v: %v", aCase.input, err)
 		}
-		if !sliceEqual(r, aCase.expected) {
+		if !slices.Equal(r, aCase.expected) {
 			t.Errorf("want: %v\ngot:  %v\n", aCase.expected, r)
 		}
 	}
@@ -83,8 +84,8 @@ func TestMarshal_struct(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sBytesExpected := []byte{1, 2, 0xC0, 0xDE, 1, 98}
-	if !sliceEqual(sBytes, sBytesExpected) {
+	sBytesExpected := []byte{1, 2, 0xC0, 0xDE, 1, 97}
+	if !slices.Equal(sBytes, sBytesExpected) {
 		t.Fatalf("want: %v\ngot:  %v\n", sBytesExpected, sBytes)
 	}
 
@@ -97,8 +98,8 @@ func TestMarshal_struct(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wBytesExpected := append(sBytesExpected, 1, 99)
-	if !sliceEqual(wBytes, wBytesExpected) {
+	wBytesExpected := append(sBytesExpected, 1, 98)
+	if !slices.Equal(wBytes, wBytesExpected) {
 		t.Fatalf("want: %v\ngot:  %v\n", wBytesExpected, wBytes)
 	}
 }
@@ -120,8 +121,8 @@ func TestMarshal_optional(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	optionalUnsetExpected := []byte{1, 2, 0xC0, 0xDE, 1, 98, 0}
-	if !sliceEqual(optionalUnsetBytes, optionalUnsetExpected) {
+	optionalUnsetExpected := []byte{1, 2, 0xC0, 0xDE, 1, 97, 0}
+	if !slices.Equal(optionalUnsetBytes, optionalUnsetExpected) {
 		t.Errorf("want: %v\ngot:  %v\n", optionalUnsetExpected, optionalUnsetBytes)
 	}
 
@@ -132,8 +133,8 @@ func TestMarshal_optional(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	optionalSetExpected := []byte{1, 2, 0xC0, 0xDE, 1, 98, 1, 3, 49, 50, 51}
-	if !sliceEqual(optionalSetBytes, optionalSetExpected) {
+	optionalSetExpected := []byte{1, 2, 0xC0, 0xDE, 1, 97, 1, 3, 49, 50, 51}
+	if !slices.Equal(optionalSetBytes, optionalSetExpected) {
 		t.Errorf("want: %v\ngot:  %v\n", optionalSetExpected, optionalSetBytes)
 	}
 }
@@ -148,14 +149,14 @@ func TestMarshal_option(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		if !sliceEqual(b, inputExpected) {
+		if !slices.Equal(b, inputExpected) {
 			t.Errorf("want: %v\ngot:  %v\n", inputExpected, b)
 		}
 		_, err = bcs.Unmarshal(b, &p1)
 		if err != nil {
 			t.Error(err)
 		}
-		if !sliceEqual(input, p1.Some) {
+		if !slices.Equal(input, p1.Some) {
 			t.Errorf("want: %v\ngot:  %v\n", input, p1.Some)
 		}
 	})
@@ -167,7 +168,7 @@ func TestMarshal_option(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		if !sliceEqual(b, inputExpected) {
+		if !slices.Equal(b, inputExpected) {
 			t.Errorf("want: %v\ngot:  %v\n", inputExpected, b)
 		}
 		_, err = bcs.Unmarshal(b, &p1)

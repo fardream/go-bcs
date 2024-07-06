@@ -2,6 +2,7 @@ package bcs_test
 
 import (
 	"bytes"
+	"slices"
 	"testing"
 
 	"github.com/fardream/go-bcs/bcs"
@@ -25,7 +26,7 @@ var uleb128Tests = []ULEB128Test{
 func TestULEB128Encode(t *testing.T) {
 	for _, aCase := range uleb128Tests {
 		r := bcs.ULEB128Encode(aCase.Input)
-		if !sliceEqual(r, aCase.Expected) {
+		if !slices.Equal(r, aCase.Expected) {
 			t.Errorf("encoding %d to %v, expecting: %v", aCase.Input, r, aCase.Expected)
 		}
 	}
