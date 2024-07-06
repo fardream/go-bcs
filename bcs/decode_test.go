@@ -2,6 +2,7 @@ package bcs_test
 
 import (
 	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/fardream/go-bcs/bcs"
@@ -132,7 +133,7 @@ func TestUnmarshal(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		if !sliceEqual(m, v.expected) {
+		if !slices.Equal(m, v.expected) {
 			t.Errorf("want: %v, got %v", v.expected, m)
 		}
 		nv := new(UnmarshalStruct)
@@ -149,7 +150,7 @@ func TestUnmarshal(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if !sliceEqual(nb, v.expected) {
+		if !slices.Equal(nb, v.expected) {
 			t.Fatalf("want: %v, got: %v", v.expected, nb)
 		}
 	}
