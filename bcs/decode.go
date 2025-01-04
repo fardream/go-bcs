@@ -66,7 +66,12 @@ func (d *Decoder) decode(v reflect.Value) (int, error) {
 	// Enum
 	if _, isEnum := v.Interface().(Enum); isEnum {
 		switch v.Kind() {
-		case reflect.Pointer, reflect.Interface:
+		case reflect.Pointer:
+			if v.IsNil() {
+				v.Set(reflect.New(v.Type().Elem()))
+			}
+			return d.decodeEnum(v.Elem())
+		case reflect.Interface:
 			if v.IsNil() {
 				return 0, fmt.Errorf("trying to decode into nil pointer/interface")
 			}
