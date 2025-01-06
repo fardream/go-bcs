@@ -58,8 +58,13 @@ func (d *Decoder) decode(v reflect.Value) (int, error) {
 		return 0, nil
 	}
 
+	vAddr := v
+	if v.Kind() != reflect.Pointer && v.CanAddr() {
+		vAddr = v.Addr()
+	}
+
 	// Unmarshaler
-	if i, isUnmarshaler := v.Interface().(Unmarshaler); isUnmarshaler {
+	if i, isUnmarshaler := vAddr.Interface().(Unmarshaler); isUnmarshaler {
 		return i.UnmarshalBCS(d.reader)
 	}
 
