@@ -20,6 +20,21 @@ func Unmarshal(data []byte, v any) (int, error) {
 	return NewDecoder(bytes.NewReader(data)).Decode(v)
 }
 
+// UnmarshalAll is like [Unmarshal], but will additionally error if the input
+// bytes are not completely consumed by the call to [Unmarshal].
+//
+// This is useful for ensuring that a particular set of bytes *completely* represents
+// the data it is decoded to (i.e. no bytes are left over after decoding).
+func UnmarshalAll(data []byte, v any) error {
+	if n, err := NewDecoder(bytes.NewReader(data)).Decode(v); err != nil {
+		return err
+	} else if n != len(data) {
+		return fmt.Errorf("did not unmarshal all bytes, got %d expected %d", n, len(data))
+	}
+
+	return nil
+}
+
 // Decoder takes an [io.Reader] and decodes value from it.
 type Decoder struct {
 	reader     io.Reader
