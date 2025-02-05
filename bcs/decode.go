@@ -275,6 +275,10 @@ func (d *Decoder) decodeEnum(v reflect.Value) (int, error) {
 		return n, err
 	}
 
+	if enumId >= v.NumField() {
+		return n, fmt.Errorf("enum field %d is out of range", enumId)
+	}
+
 	field := v.Field(enumId)
 
 	k, err := d.decode(field)
