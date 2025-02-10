@@ -3,10 +3,10 @@ package bcs_test
 import (
 	"bytes"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/fardream/go-bcs/bcs"
-	"github.com/stretchr/testify/require"
 )
 
 type ULEB128Test struct {
@@ -28,7 +28,9 @@ var uleb128Tests = []ULEB128Test{
 func TestULEB128Encode(t *testing.T) {
 	for _, aCase := range uleb128Tests {
 		r, err := bcs.ULEB128Encode(aCase.Input)
-		require.NoError(t, err)
+		if err != nil {
+			t.Fatalf("failed to encode: %v", err)
+		}
 		if !slices.Equal(r, aCase.Expected) {
 			t.Errorf("encoding %d to %v, expecting: %v", aCase.Input, r, aCase.Expected)
 		}
@@ -67,19 +69,21 @@ func TestULEB128DecodeNonCanonical(t *testing.T) {
 
 	for _, c := range cases {
 		_, _, err := bcs.ULEB128Decode[int](bytes.NewReader(c))
-		require.ErrorContains(t, err, "ULEB128 encoding was not minimal in size")
+		if !strings.Contains(err.Error(), "ULEB128 encoding was not minimal in size") {
+			t.Fatalf("expected failure due to non minimal input, got %v", err)
+		}
 	}
 }
 
 func TestULEB128DecodeTooLarge(t *testing.T) {
-	cases := [][]byte{
-		{0x80, 0x80, 0x80, 0x80, 0x80, 0x01},
-		{0x80, 0x80, 0x80, 0x80, 0x10},
+	_, _, err := bcs.ULEB128Decode[uint64](bytes.NewReader([]byte{0x80, 0x80, 0x80, 0x80, 0x80, 0x01}))
+	if !strings.Contains(err.Error(), "failed to find most significant bytes") {
+		t.Fatalf("expected failure due to size, got %v", err)
 	}
 
-	for _, c := range cases {
-		_, _, err := bcs.ULEB128Decode[uint64](bytes.NewReader(c))
-		require.ErrorContains(t, err, "value does not fit in u32")
+	_, _, err = bcs.ULEB128Decode[uint64](bytes.NewReader([]byte{0x80, 0x80, 0x80, 0x80, 0x10}))
+	if !strings.Contains(err.Error(), "value does not fit in u32") {
+		t.Fatalf("expected failure due to size, got %v", err)
 	}
 }
 
@@ -92,6 +96,8 @@ func TestULEB128EncodeTooLarge(t *testing.T) {
 
 	for _, c := range cases {
 		_, err := bcs.ULEB128Encode(c)
-		require.ErrorContains(t, err, "larger than the max allowed ULEB128")
+		if !strings.Contains(err.Error(), "larger than the max allowed ULEB128") {
+			t.Fatalf("expected failure due to size, got %v", err)
+		}
 	}
 }
