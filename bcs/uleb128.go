@@ -50,6 +50,10 @@ func ULEB128Decode[T ULEB128SupportedTypes](r io.Reader) (T, int, error) {
 
 		d := T(buf[0])
 		ld := d & 127
+		if ld == d && shift > 0 && ld == 0 {
+			return 0, n, fmt.Errorf("ULEB128 encoding was not minimal in size")
+		}
+
 		if (ld<<shift)>>shift != ld {
 			return v, n, fmt.Errorf("overflow at index %d: %v", n-1, ld)
 		}

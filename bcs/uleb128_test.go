@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/fardream/go-bcs/bcs"
+	"github.com/stretchr/testify/require"
 )
 
 type ULEB128Test struct {
@@ -53,5 +54,17 @@ func TestULEB128Decode(t *testing.T) {
 		} else {
 			t.Logf("succeeded overflowing: %v", e)
 		}
+	}
+}
+
+func TestULEB128DecodeNonCanonical(t *testing.T) {
+	cases := [][]byte{
+		{0x80, 0},
+		{0x80, 0x80, 0},
+	}
+
+	for _, c := range cases {
+		_, _, err := bcs.ULEB128Decode[int](bytes.NewReader(c))
+		require.ErrorContains(t, err, "ULEB128 encoding was not minimal in size")
 	}
 }
