@@ -68,3 +68,15 @@ func TestULEB128DecodeNonCanonical(t *testing.T) {
 		require.ErrorContains(t, err, "ULEB128 encoding was not minimal in size")
 	}
 }
+
+func TestULEB128DecodeTooLarge(t *testing.T) {
+	cases := [][]byte{
+		{0x80, 0x80, 0x80, 0x80, 0x80, 0x01},
+		{0x80, 0x80, 0x80, 0x80, 0x10},
+	}
+
+	for _, c := range cases {
+		_, _, err := bcs.ULEB128Decode[uint64](bytes.NewReader(c))
+		require.ErrorContains(t, err, "value does not fit in u32")
+	}
+}

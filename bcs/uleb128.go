@@ -28,6 +28,8 @@ func ULEB128Encode[T ULEB128SupportedTypes](input T) []byte {
 	return result[:i]
 }
 
+const uint32Max = uint64(1<<32 - 1)
+
 // ULEB128Decode decodes [io.Reader] into an integer, returns the resulted value, the number of byte read, and a possible error.
 //
 // [binary.ReadUvarint] is not used here because
@@ -50,20 +52,30 @@ func ULEB128Decode[T ULEB128SupportedTypes](r io.Reader) (T, int, error) {
 
 		d := T(buf[0])
 		ld := d & 127
-		if ld == d && shift > 0 && ld == 0 {
-			return 0, n, fmt.Errorf("ULEB128 encoding was not minimal in size")
-		}
 
 		if (ld<<shift)>>shift != ld {
-			return v, n, fmt.Errorf("overflow at index %d: %v", n-1, ld)
+			return 0, n, fmt.Errorf("overflow at index %d: %v", n-1, ld)
 		}
 
 		ld <<= shift
 		v = ld + v
 		if v < ld {
-			return v, n, fmt.Errorf("overflow after adding index %d: %v %v", n-1, ld, v)
+			return 0, n, fmt.Errorf("overflow after adding index %d: %v %v", n-1, ld, v)
 		}
+
+		if uint64(v) > uint32Max {
+			return 0, n, fmt.Errorf("overflow at index %d: %v, value does not fit in u32", n-1, ld)
+		}
+
 		if d <= 127 {
+			if shift > 0 && d == 0 {
+				return 0, n, fmt.Errorf("ULEB128 encoding was not minimal in size")
+			}
+
+			if uint64(v) > uint32Max {
+				return 0, n, fmt.Errorf("overflow at index %d: %v, value does not fit in u32", n-1, ld)
+			}
+
 			return v, n, nil
 		}
 
