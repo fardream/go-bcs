@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/fardream/go-bcs/bcs"
-	"github.com/stretchr/testify/require"
 )
 
 type NestedEnum struct {
@@ -55,11 +54,13 @@ func TestEnumInvalid_Unmarshal(t *testing.T) {
 	for _, v := range cases {
 		e := &EnumExample{}
 
-		require.NotPanics(t, func() {
-			n, err := bcs.Unmarshal(v, e)
-			require.Error(t, err)
-			require.Equal(t, 1, n)
-		})
+		n, err := bcs.Unmarshal(v, e)
+		if err == nil {
+			t.Fatalf("expect error")
+		}
+		if n != 1 {
+			t.Errorf("want 1, got %d", n)
+		}
 	}
 }
 
