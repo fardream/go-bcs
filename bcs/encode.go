@@ -124,7 +124,11 @@ func (e *Encoder) encodeEnum(v reflect.Value) error {
 			return fmt.Errorf("enum only supports fields that are either pointers or interfaces, unless they are ignored")
 		}
 		if !field.IsNil() {
-			if _, err := e.w.Write(ULEB128Encode(i)); err != nil {
+			ie, err := ULEB128Encode(i)
+			if err != nil {
+				return err
+			}
+			if _, err := e.w.Write(ie); err != nil {
 				return err
 			}
 			if fieldKind == reflect.Pointer {
@@ -140,8 +144,11 @@ func (e *Encoder) encodeEnum(v reflect.Value) error {
 
 // encodeByteSlice is specialized since bytes those can be simply put into the output.
 func (e *Encoder) encodeByteSlice(b []byte) error {
-	l := len(b)
-	if _, err := e.w.Write(ULEB128Encode(l)); err != nil {
+	le, err := ULEB128Encode(len(b))
+	if err != nil {
+		return err
+	}
+	if _, err := e.w.Write(le); err != nil {
 		return err
 	}
 
@@ -165,7 +172,11 @@ func (e *Encoder) encodeArray(v reflect.Value) error {
 
 func (e *Encoder) encodeSlice(v reflect.Value) error {
 	length := v.Len()
-	if _, err := e.w.Write(ULEB128Encode(length)); err != nil {
+	le, err := ULEB128Encode(length)
+	if err != nil {
+		return err
+	}
+	if _, err := e.w.Write(le); err != nil {
 		return err
 	}
 

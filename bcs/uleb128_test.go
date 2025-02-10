@@ -22,11 +22,13 @@ var uleb128Tests = []ULEB128Test{
 	{2097152, []byte{0x80, 0x80, 0x80, 1}},
 	{268435456, []byte{0x80, 0x80, 0x80, 0x80, 1}},
 	{9487, []byte{0x8f, 0x4a}},
+	{uint32(bcs.MaxUleb128), []byte{0xff, 0xff, 0xff, 0xff, 0x0f}},
 }
 
 func TestULEB128Encode(t *testing.T) {
 	for _, aCase := range uleb128Tests {
-		r := bcs.ULEB128Encode(aCase.Input)
+		r, err := bcs.ULEB128Encode(aCase.Input)
+		require.NoError(t, err)
 		if !slices.Equal(r, aCase.Expected) {
 			t.Errorf("encoding %d to %v, expecting: %v", aCase.Input, r, aCase.Expected)
 		}
@@ -78,5 +80,18 @@ func TestULEB128DecodeTooLarge(t *testing.T) {
 	for _, c := range cases {
 		_, _, err := bcs.ULEB128Decode[uint64](bytes.NewReader(c))
 		require.ErrorContains(t, err, "value does not fit in u32")
+	}
+}
+
+func TestULEB128EncodeTooLarge(t *testing.T) {
+	cases := []uint64{
+		2 << 33,
+		2 << 36,
+		bcs.MaxUleb128 + 1,
+	}
+
+	for _, c := range cases {
+		_, err := bcs.ULEB128Encode(c)
+		require.ErrorContains(t, err, "larger than the max allowed ULEB128")
 	}
 }
