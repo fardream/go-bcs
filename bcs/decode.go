@@ -281,6 +281,11 @@ func (d *Decoder) decodeEnum(v reflect.Value) (int, error) {
 
 	field := v.Field(enumId)
 
+	// Initialize nil pointer fields before decoding
+	if field.Kind() == reflect.Ptr && field.IsNil() {
+		field.Set(reflect.New(field.Type().Elem()))
+	}
+
 	k, err := d.decode(field)
 	n += k
 
