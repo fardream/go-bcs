@@ -245,7 +245,7 @@ fieldLoop:
 				return n, err
 			}
 			if isOptional == 0 {
-				field.Set(reflect.Zero(v.Type()))
+				field.Set(reflect.Zero(field.Type()))
 			} else {
 				field.Set(reflect.New(field.Type().Elem()))
 				k, err := d.decode(field.Elem())

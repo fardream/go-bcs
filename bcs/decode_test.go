@@ -95,7 +95,8 @@ func TestUnmarshal_BasicTypes(t *testing.T) {
 
 type UnmarshalStruct struct {
 	WrapperWithOptional
-	StructArray [2]*MyStruct
+	StructArray    [2]*MyStruct
+	OptionalStruct *AnotherStruct `bcs:"optional"`
 }
 
 type UnmarshalCase struct {
@@ -121,9 +122,33 @@ var unmarshalCases = []*UnmarshalCase{
 					Boolean: false,
 				},
 			},
+			OptionalStruct: nil,
 		},
 		errNotNil: false,
-		expected:  []byte{0, 2, 9, 2, 0, 1, 0, 1, 3, 1, 2, 3, 4, 119, 104, 97, 116, 0, 0, 0},
+		expected:  []byte{0, 2, 9, 2, 0, 1, 0, 1, 3, 1, 2, 3, 4, 119, 104, 97, 116, 0, 0, 0, 0},
+	},
+	{
+		v: &UnmarshalStruct{
+			WrapperWithOptional: WrapperWithOptional{
+				Inner: MyStruct{Bytes: []byte{9, 2}},
+				Outer: new(string),
+			},
+			StructArray: [2]*MyStruct{
+				{
+					Boolean: true,
+					Bytes:   []byte{1, 2, 3},
+					Label:   "what",
+				},
+				{
+					Boolean: false,
+				},
+			},
+			OptionalStruct: &AnotherStruct{
+				S: "hey",
+			},
+		},
+		errNotNil: false,
+		expected:  []byte{0, 2, 9, 2, 0, 1, 0, 1, 3, 1, 2, 3, 4, 119, 104, 97, 116, 0, 0, 0, 1, 3, 104, 101, 121},
 	},
 }
 
