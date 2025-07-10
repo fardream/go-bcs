@@ -195,3 +195,19 @@ func TestEmptyByteSlice(t *testing.T) {
 		t.Errorf("want parsed length 1")
 	}
 }
+
+func TestLargeDeclaredSize(t *testing.T) {
+	var data [][64]string
+
+	// Set the declared size to be the maximum value
+	buf, _ := bcs.ULEB128Encode(1<<31 - 1)
+
+	// Unmarshalling this small input with large declared size should not cause an out-of-memory panic.
+	err := bcs.UnmarshalAll(buf, &data)
+	if err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+	if len(data) != 0 {
+		t.Fatalf("expected empty result, got %d elements", len(data))
+	}
+}
