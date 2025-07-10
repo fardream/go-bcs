@@ -3,6 +3,7 @@ package bcs_test
 import (
 	"fmt"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/fardream/go-bcs/bcs"
@@ -202,12 +203,10 @@ func TestLargeDeclaredSize(t *testing.T) {
 	// Set the declared size to be the maximum value
 	buf, _ := bcs.ULEB128Encode(1<<31 - 1)
 
-	// Unmarshalling this small input with large declared size should not cause an out-of-memory panic.
+	// Unmarshaling this small input with large declared size should fail gracefully
+	// because there's not enough data to read the declared number of elements.
 	err := bcs.UnmarshalAll(buf, &data)
-	if err != nil {
-		t.Fatalf("failed to unmarshal: %v", err)
-	}
-	if len(data) != 0 {
-		t.Fatalf("expected empty result, got %d elements", len(data))
+	if err == nil || !strings.Contains(err.Error(), "EOF") {
+		t.Fatalf("expected unmarshaling to fail with insufficient data")
 	}
 }

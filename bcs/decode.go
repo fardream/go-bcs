@@ -188,10 +188,11 @@ func (d *Decoder) decodeString(v reflect.Value) (int, error) {
 		return n, nil
 	}
 
-	tmp := make([]byte, size)
-
-	read, err := d.reader.Read(tmp)
+	r := io.LimitReader(d.reader, int64(size))
+	tmp, err := io.ReadAll(r)
+	read := len(tmp)
 	n += read
+
 	if err != nil {
 		return n, err
 	}
@@ -302,10 +303,11 @@ func (d *Decoder) decodeByteSlice(v reflect.Value) (int, error) {
 		return n, nil
 	}
 
-	tmp := make([]byte, size)
-
-	read, err := d.reader.Read(tmp)
+	r := io.LimitReader(d.reader, int64(size))
+	tmp, err := io.ReadAll(r)
+	read := len(tmp)
 	n += read
+
 	if err != nil {
 		return n, err
 	}
@@ -359,8 +361,8 @@ func (d *Decoder) decodeSlice(v reflect.Value) (int, error) {
 
 	// element type of the slice
 	elementType := v.Type().Elem()
-	// make a new slice
-	tmp := reflect.MakeSlice(v.Type(), 0, size)
+	// make a new slice; we don't pre-allocate to prevent DoS
+	tmp := reflect.MakeSlice(v.Type(), 0, 0)
 
 	if elementType.Kind() == reflect.Pointer {
 		for i := 0; i < size; i++ {
