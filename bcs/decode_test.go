@@ -3,6 +3,7 @@ package bcs_test
 import (
 	"fmt"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/fardream/go-bcs/bcs"
@@ -193,5 +194,19 @@ func TestEmptyByteSlice(t *testing.T) {
 	}
 	if n != 1 {
 		t.Errorf("want parsed length 1")
+	}
+}
+
+func TestLargeDeclaredSize(t *testing.T) {
+	var data [][64]string
+
+	// Set the declared size to be the maximum value
+	buf, _ := bcs.ULEB128Encode(1<<31 - 1)
+
+	// Unmarshaling this small input with large declared size should fail gracefully
+	// because there's not enough data to read the declared number of elements.
+	err := bcs.UnmarshalAll(buf, &data)
+	if err == nil || !strings.Contains(err.Error(), "EOF") {
+		t.Fatalf("expected unmarshaling to fail with insufficient data")
 	}
 }
