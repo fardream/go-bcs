@@ -2,11 +2,15 @@ package bcs
 
 import (
 	"bytes"
+	"container/list"
 	"encoding/binary"
 	"fmt"
 	"io"
 	"reflect"
 )
+
+// maxChunkSize is the maximum size to allocate at once, limiting DoS attacks
+const maxChunkSize = 1024 * 1024 // 1MB chunks
 
 // Unmarshal unmarshals the bcs serialized data into v.
 //
@@ -188,22 +192,34 @@ func (d *Decoder) decodeString(v reflect.Value) (int, error) {
 		return n, nil
 	}
 
-	r := io.LimitReader(d.reader, int64(size))
-	tmp, err := io.ReadAll(r)
-	read := len(tmp)
-	n += read
+	// Allocate in chunks. `tmp` is guaranteed to allocate at most 2^32 / (1024*1024) = 4096 elements.
+	// This also avoids copying the data many times
+	tmp := make([][]byte, 0, (size+maxChunkSize-1)/maxChunkSize)
+	totalRead := 0
 
-	if err != nil {
-		return n, err
+	for totalRead < size {
+		// Determine how much to read in this iteration
+		remaining := size - totalRead
+		chunkSize := min(remaining, maxChunkSize)
+
+		tmp = append(tmp, make([]byte, chunkSize))
+
+		// Read the chunk
+		read, err := d.reader.Read(tmp[len(tmp)-1])
+		totalRead += read
+
+		if err != nil {
+			return n + totalRead, err
+		}
+	}
+	// If there's only one chunk, no need to copy the data
+	if len(tmp) == 1 {
+		v.SetString(string(tmp[0]))
+	} else {
+		v.SetString(string(bytes.Join(tmp, nil)))
 	}
 
-	if size != read {
-		return n, fmt.Errorf("wrong number of bytes read for string, want: %d, got %d", size, read)
-	}
-
-	v.SetString(string(tmp))
-
-	return n, nil
+	return n + totalRead, nil
 }
 
 // readByte reads one byte from the input, error if no byte is read.
@@ -303,22 +319,35 @@ func (d *Decoder) decodeByteSlice(v reflect.Value) (int, error) {
 		return n, nil
 	}
 
-	r := io.LimitReader(d.reader, int64(size))
-	tmp, err := io.ReadAll(r)
-	read := len(tmp)
-	n += read
+	// Allocate in chunks. `tmp` is guaranteed to allocate at most 2^32 / (1024*1024) = 4096 elements.
+	// This also avoids copying the data many times
+	tmp := make([][]byte, 0, (size+maxChunkSize-1)/maxChunkSize)
+	totalRead := 0
 
-	if err != nil {
-		return n, err
+	for totalRead < size {
+		// Determine how much to read in this iteration
+		remaining := size - totalRead
+		chunkSize := min(remaining, maxChunkSize)
+
+		tmp = append(tmp, make([]byte, chunkSize))
+
+		// Read the chunk
+		read, err := d.reader.Read(tmp[len(tmp)-1])
+		totalRead += read
+
+		if err != nil {
+			return n + totalRead, err
+		}
 	}
 
-	if size != read {
-		return n, fmt.Errorf("wrong number of bytes read for []byte, want: %d, got %d", size, read)
+	// If there's only one chunk, no need to do an extra copy inside Join
+	if len(tmp) == 1 {
+		v.SetBytes(tmp[0])
+	} else {
+		v.SetBytes(bytes.Join(tmp, nil))
 	}
 
-	v.Set(reflect.ValueOf(tmp))
-
-	return n, nil
+	return n + totalRead, nil
 }
 
 func (d *Decoder) decodeArray(v reflect.Value) (int, error) {
@@ -361,8 +390,11 @@ func (d *Decoder) decodeSlice(v reflect.Value) (int, error) {
 
 	// element type of the slice
 	elementType := v.Type().Elem()
-	// make a new slice; we don't pre-allocate to prevent DoS
-	tmp := reflect.MakeSlice(v.Type(), 0, 0)
+
+	// Use a linked list to hold elements
+	// This avoids pre-allocating very large buffer when elements are large
+	// or the number of elements is large
+	l := list.New()
 
 	if elementType.Kind() == reflect.Pointer {
 		for i := 0; i < size; i++ {
@@ -372,7 +404,7 @@ func (d *Decoder) decodeSlice(v reflect.Value) (int, error) {
 			if err != nil {
 				return n, err
 			}
-			tmp = reflect.Append(tmp, ind)
+			l.PushBack(ind)
 		}
 	} else {
 		for i := 0; i < size; i++ {
@@ -382,11 +414,21 @@ func (d *Decoder) decodeSlice(v reflect.Value) (int, error) {
 			if err != nil {
 				return n, err
 			}
-			tmp = reflect.Append(tmp, ind.Elem())
+			l.PushBack(ind)
 		}
 	}
 
-	v.Set(tmp)
+	// Now it is okay to allocate a slice of full size
+	// since we would have returned early with EoF if the
+	// input was smaller than the declare size
+	v.Set(reflect.MakeSlice(v.Type(), size, size))
+	for i, e := 0, l.Front(); e != nil; i, e = i+1, e.Next() {
+		if elementType.Kind() == reflect.Pointer {
+			v.Index(i).Set(e.Value.(reflect.Value))
+		} else {
+			v.Index(i).Set(e.Value.(reflect.Value).Elem())
+		}
+	}
 
 	return n, nil
 }
